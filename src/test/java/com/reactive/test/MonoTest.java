@@ -2,7 +2,6 @@ package com.reactive.test;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Subscription;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -126,5 +125,56 @@ public class MonoTest {
 //        StepVerifier.create(mono)
 //                .expectNext(name.toUpperCase())
 //                .verifyComplete();
+    }
+
+    @Test
+    public void monoDoOnError() {
+        Mono<Object> error = Mono.error(new IllegalArgumentException("Illegal argument exception!"))
+                .doOnError(e -> MonoTest.log.error("Error message: {}", e.getMessage()))
+                .doOnNext(s -> log.info("Executing this doOnNext")) //Not execute
+                .log();
+
+        MonoTest.log.info("--------------------");
+
+        StepVerifier.create(error)
+                .expectError(IllegalArgumentException.class)
+                .verify();
+    }
+
+    @Test
+    public void monoDoOnErrorResume() {
+        String name = "Luiz Pinheiro";
+        Mono<Object> error = Mono.error(new IllegalArgumentException("Illegal argument exception!"))
+                .doOnError(e -> MonoTest.log.error("Error message: {}", e.getMessage()))
+                .onErrorResume(s -> {
+                    log.info("Inside onErrorResume");
+                    return Mono.just(name);
+                })
+                .log();
+
+        MonoTest.log.info("--------------------");
+
+        StepVerifier.create(error)
+                .expectNext(name)
+                .verifyComplete();
+    }
+
+    @Test
+    public void monoDoOnErrorReturn() {
+        String name = "Luiz Pinheiro";
+        Mono<Object> error = Mono.error(new IllegalArgumentException("Illegal argument exception!"))
+                .onErrorReturn("EMPTY")
+                .onErrorResume(s -> {
+                    log.info("Inside onErrorResume");
+                    return Mono.just(name);
+                })
+                .doOnError(e -> MonoTest.log.error("Error message: {}", e.getMessage()))
+                .log();
+
+        MonoTest.log.info("--------------------");
+
+        StepVerifier.create(error)
+                .expectNext("EMPTY")
+                .verifyComplete();
     }
 }
